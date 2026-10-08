@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: .
+      args: {SERVICE: backend}
+    environment:
+      DB_PATH: /data/proxyforge.db
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN}
+      UI_ORIGIN: http://localhost:8080
+    volumes: [proxyforge_data:/data]
+    ports: ["127.0.0.1:8000:8000"]
+    restart: unless-stopped
+  agent:
+    build:
+      context: .
+      args: {SERVICE: agent}
+    environment:
+      AGENT_TOKEN: ${AGENT_TOKEN:?set AGENT_TOKEN}
+      PROXY_ENGINE: haproxy
+      ENABLE_APPLY: "false"
+    restart: unless-stopped
+  ui:
+    image: nginx:1.27-alpine
+    volumes: ["./frontend:/usr/share/nginx/html:ro"]
+    ports: ["127.0.0.1:8080:80"]
+    restart: unless-stopped
+volumes:
+  proxyforge_data:
