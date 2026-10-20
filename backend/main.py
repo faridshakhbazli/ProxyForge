@@ -93,6 +93,18 @@ def add_node(n:Node,x_admin_token:str=Header(default='')):
   with conn() as c:c.execute('INSERT INTO nodes(name,engine,url,token) VALUES(?,?,?,?)',(n.name,n.engine,n.url.rstrip('/'),n.token))
  except sqlite3.IntegrityError:raise HTTPException(409,'Node already exists')
  return {'ok':True}
+@app.put('/nodes/{node_id}')
+def update_node(node_id:int,n:Node,x_admin_token:str=Header(default='')):
+ auth(x_admin_token)
+ if not allowed_agent_url(n.url):raise HTTPException(400,'Use HTTPS for remote agents; set ALLOW_HTTP_AGENTS=true for private IP HTTP agents')
+ with conn() as c:
+  existing=c.execute('SELECT id FROM nodes WHERE id=?',(node_id,)).fetchone()
+  if not existing:raise HTTPException(404,'Node not found')
+  try:
+   c.execute('UPDATE nodes SET name=?,engine=?,url=?,token=? WHERE id=?',(n.name,n.engine,n.url.rstrip('/'),n.token,node_id))
+  except sqlite3.IntegrityError:raise HTTPException(409,'Node name already exists')
+ return {'ok':True}
+
 @app.get('/nodes/{node_id}/discovery')
 def discovery(node_id:int,x_admin_token:str=Header(default='')):
  auth(x_admin_token)
