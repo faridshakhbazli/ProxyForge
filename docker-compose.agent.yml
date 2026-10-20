@@ -37,7 +37,7 @@ services:
       - /etc/haproxy:/host/etc/haproxy:ro
       - /usr/sbin:/host/usr/sbin:ro
     ports:
-      - "127.0.0.1:8001:8000"
+      - "8001:8000"
     restart: unless-stopped
 volumes:
   agent_secrets:
