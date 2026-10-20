@@ -2,7 +2,9 @@ import os, subprocess, tempfile, shutil, pathlib, threading, json, socket, urlli
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 app=FastAPI(title='ProxyForge Agent')
-TOKEN=open('/run/proxyforge/agent_token').read().strip() if os.path.exists('/run/proxyforge/agent_token') else os.getenv('AGENT_TOKEN','change-agent-token')
+TOKEN=os.getenv('AGENT_TOKEN','').strip() or (open('/run/proxyforge/agent_token').read().strip() if os.path.isfile('/run/proxyforge/agent_token') else '')
+if len(TOKEN)<32:
+ raise RuntimeError('AGENT_TOKEN must contain at least 32 characters, or mount /run/proxyforge/agent_token')
 ENGINE=os.getenv('PROXY_ENGINE','haproxy')
 TARGET=os.getenv('TARGET_PATH','/etc/haproxy/proxyforge.cfg')
 APPLY=os.getenv('ENABLE_APPLY','false').lower()=='true'

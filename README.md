@@ -27,3 +27,14 @@ Keep `.env` private; do not commit tokens or post them in chats. A previously ex
 ## Limitations
 
 The controller and remote agent are development MVP components. Remote agent enrollment requires HTTPS, trusted certificates, explicit allowlists, and separate agent credentials. Agent apply is dry-run / intentionally blocked; there is no production login, RBAC, or full config import. Do not expose the MVP publicly.
+
+## Agent token configuration
+
+Both controller and agent accept explicit secrets from the same local `.env` format:
+
+```dotenv
+ADMIN_TOKEN=<unique-random-value-at-least-32-characters>
+AGENT_TOKEN=<different-unique-random-value-at-least-32-characters>
+```
+
+Copy `.env.example` to `.env`, then **replace the demonstration `changeme123` values**. Those short placeholders are deliberately rejected; they are not valid credentials. Keep `.env` out of Git. On the controller run `docker compose up -d --force-recreate api`; on the Linux VM run `docker compose -f docker-compose.agent.yml up -d --force-recreate agent`. When an environment token is set, it takes priority over the token file in the corresponding Docker volume.

@@ -26,6 +26,7 @@ services:
       agent-bootstrap:
         condition: service_completed_successfully
     environment:
+      AGENT_TOKEN: ${AGENT_TOKEN:-}
       PROXY_ENGINE: haproxy
       ENABLE_APPLY: "false"
       NODE_NAME: ${NODE_NAME:-haproxy-vm}
