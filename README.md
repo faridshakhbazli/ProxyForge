@@ -11,7 +11,7 @@ ADMIN_TOKEN=replace-with-a-unique-random-secret-of-at-least-32-characters
 ```
 
 Generate a secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
-Apply changes with `docker compose up -d --force-recreate api`. The API uses the environment variable **first**. If it is empty or unset, the controller uses its auto-generated token in the persistent `proxyforge_secrets` volume. It refuses to start without a token of at least 32 characters; there is no `change-me` default.
+Apply changes with `docker compose up -d --force-recreate api`. The API uses the environment variable **first**. If it is empty or unset, the controller uses its auto-generated token in the persistent `proxyforge_secrets` volume. An explicitly configured token shorter than 32 characters fails with a clear configuration error (never silently falls back). When the variable is empty or absent, a persistent generated token is used.
 
 When no environment override is configured, retrieve the generated token with `docker compose exec -T api cat /run/proxyforge/admin_token`. **When ADMIN_TOKEN is configured, the file is not the active token.** Use the configured environment value in the GUI instead.
 
@@ -37,7 +37,7 @@ ADMIN_TOKEN=<unique-random-value-at-least-32-characters>
 AGENT_TOKEN=<different-unique-random-value-at-least-32-characters>
 ```
 
-Copy `.env.example` to `.env`, then **replace the demonstration `changeme123` values**. Those short placeholders are deliberately rejected; they are not valid credentials. Keep `.env` out of Git. On the controller run `docker compose up -d --force-recreate api`; on the Linux VM run `docker compose -f docker-compose.agent.yml up -d --force-recreate agent`. When an environment token is set, it takes priority over the token file in the corresponding Docker volume.
+Copy `.env.example` to `.env`, then set **different randomly generated 32+ character values** for `ADMIN_TOKEN` and `AGENT_TOKEN`. Never use `changeme123`: it is too short. To use a generated controller token instead, leave `ADMIN_TOKEN` empty. Keep `.env` out of Git. On the controller run `docker compose up -d --force-recreate api`; on the Linux VM run `docker compose -f docker-compose.agent.yml up -d --force-recreate agent`. A configured `ADMIN_TOKEN` is authoritative: an invalid short value produces an explicit startup error rather than using another token. When unset, the controller uses the persistent generated token.
 
 ## Private-network HTTP agents (development only)
 

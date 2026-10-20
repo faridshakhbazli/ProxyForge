@@ -5,11 +5,12 @@ from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 
 DB=os.getenv('DB_PATH','/data/proxyforge.db')
-# Accept only strong credentials. An invalid .env value must not shadow a
-# valid bootstrap secret and cause a crash loop.
+# ADMIN_TOKEN in .env is authoritative. Never silently use a different token.
 def load_admin_token():
  configured=os.getenv('ADMIN_TOKEN','').strip()
- if len(configured)>=32:
+ if configured:
+  if len(configured)<32:
+   raise RuntimeError('ADMIN_TOKEN from .env must contain at least 32 characters; update .env and recreate the API container')
   return configured
  for path in ('/run/proxyforge/admin_token','/data/admin_token'):
   try:
@@ -19,8 +20,7 @@ def load_admin_token():
     return candidate
   except FileNotFoundError:
    pass
- # Last-resort self-initialization on the persistent writable API data volume.
- # Never generate a fresh credential on each container restart.
+ # No explicit .env token: initialize a persistent secret as a fallback.
  path='/data/admin_token'
  os.makedirs(os.path.dirname(path),exist_ok=True)
  try:
