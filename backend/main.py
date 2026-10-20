@@ -101,7 +101,27 @@ def discovery(node_id:int,x_admin_token:str=Header(default='')):
  req=urllib.request.Request(n['url']+'/discover',headers={'X-Agent-Token':n['token']})
  try:
   with urllib.request.urlopen(req,timeout=8) as r:return json.load(r)
- except Exception:raise HTTPException(502,'Agent discovery unavailable; check HTTPS, certificate trust and network access')
+ except urllib.error.HTTPError as e:
+  # Do not forward response bodies: remote services may echo secrets.
+  if e.code in (401,403):
+   raise HTTPException(502,'Agent rejected credentials (HTTP '+str(e.code)+'); check the saved node Agent Token and agent .env')
+  raise HTTPException(502,'Agent discovery returned HTTP '+str(e.code))
+ except urllib.error.URLError as e:
+  reason=e.reason
+  import ssl
+  if isinstance(reason,ssl.SSLError):
+   detail='Agent TLS certificate verification failed'
+  elif isinstance(reason,(ConnectionRefusedError,TimeoutError)):
+   detail='Agent connection refused or timed out'
+  else:
+   detail='Agent connection failed ('+type(reason).__name__+')'
+  raise HTTPException(502,detail)
+ except (TimeoutError,ConnectionError):
+  raise HTTPException(502,'Agent discovery timed out or connection failed')
+ except (ValueError,json.JSONDecodeError):
+  raise HTTPException(502,'Agent returned invalid JSON')
+ except Exception as e:
+  raise HTTPException(502,'Agent discovery failed ('+type(e).__name__+')')
 @app.get('/upstreams')
 def upstreams(node_id:int,x_admin_token:str=Header(default='')):
  auth(x_admin_token)
