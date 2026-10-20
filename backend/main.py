@@ -9,8 +9,8 @@ DB=os.getenv('DB_PATH','/data/proxyforge.db')
 def load_admin_token():
  configured=os.getenv('ADMIN_TOKEN','').strip()
  if configured:
-  if len(configured)<32:
-   raise RuntimeError('ADMIN_TOKEN from .env must contain at least 32 characters; update .env and recreate the API container')
+  if len(configured)<8:
+   raise RuntimeError('ADMIN_TOKEN from .env must contain at least 8 characters; update .env and recreate the API container')
   return configured
  for path in ('/run/proxyforge/admin_token','/data/admin_token'):
   try:
@@ -56,7 +56,7 @@ class Enrollment(BaseModel):
  name:str=Field(pattern=r'^[a-zA-Z0-9_-]{1,64}$')
  engine:str=Field(pattern=r'^(haproxy|nginx)$')
  url:str
- token:str=Field(min_length=32,max_length=512)
+ token:str=Field(min_length=8,max_length=512)
 class Node(BaseModel):
  name:str=Field(pattern=r'^[a-zA-Z0-9_-]{1,64}$')
  engine:str=Field(pattern=r'^(haproxy|nginx)$')
