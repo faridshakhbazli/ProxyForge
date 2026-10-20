@@ -44,3 +44,9 @@ services:
 volumes:
   proxyforge_data:
   proxyforge_secrets:
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.14.0.0/24
+          gateway: 172.14.0.1
