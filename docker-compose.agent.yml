@@ -1,0 +1,43 @@
+# Run ONLY the agent on a Linux VM: docker compose -f docker-compose.agent.yml up -d --build
+# Host HAProxy/NGINX config is mounted read-only for discovery. No host changes are permitted.
+services:
+  agent-bootstrap:
+    image: python:3.12-alpine
+    command:
+      - python
+      - -c
+      - |
+        import os, pathlib, secrets
+        path=pathlib.Path('/run/proxyforge/agent_token')
+        path.parent.mkdir(parents=True,exist_ok=True)
+        if not path.exists():
+            fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+            with os.fdopen(fd,'w') as stream: stream.write(secrets.token_urlsafe(48))
+        print('ProxyForge Agent token ready in Docker volume',flush=True)
+    volumes:
+      - agent_secrets:/run/proxyforge
+    restart: "no"
+  agent:
+    build:
+      context: .
+      args:
+        SERVICE: agent
+    depends_on:
+      agent-bootstrap:
+        condition: service_completed_successfully
+    environment:
+      PROXY_ENGINE: haproxy
+      ENABLE_APPLY: "false"
+      NODE_NAME: ${NODE_NAME:-haproxy-vm}
+      CONTROLLER_URL: ${CONTROLLER_URL:-}
+      AGENT_PUBLIC_URL: ${AGENT_PUBLIC_URL:-}
+      ENROLLMENT_TOKEN: ${ENROLLMENT_TOKEN:-}
+    volumes:
+      - agent_secrets:/run/proxyforge:ro
+      - /etc/haproxy:/host/etc/haproxy:ro
+      - /usr/sbin:/host/usr/sbin:ro
+    ports:
+      - "127.0.0.1:8001:8000"
+    restart: unless-stopped
+volumes:
+  agent_secrets:

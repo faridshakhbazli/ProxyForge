@@ -13,7 +13,8 @@ def discover_engine():
  found=[]
  for name in ('haproxy','nginx'):
   binary=shutil.which(name)
-  if binary:found.append(name)
+  host_binary=any(os.path.isfile('/host'+p+'/'+name) for p in ('/usr/sbin','/usr/bin','/sbin','/bin','/usr/local/sbin','/usr/local/bin'))
+  if binary or host_binary:found.append(name)
  return found
 def inventory():
  engines=discover_engine()
@@ -21,11 +22,11 @@ def inventory():
  selected=ENGINE if ENGINE in ('haproxy','nginx') else (engines[0] if len(engines)==1 else None)
  config=paths.get(selected)
  active=None
- if selected and shutil.which('systemctl'):
+ if selected and not os.path.isdir('/host') and shutil.which('systemctl'):
   try:active=subprocess.run(['systemctl','is-active',selected],capture_output=True,text=True,timeout=3).stdout.strip()
   except Exception:pass
  return {'hostname':socket.gethostname(),'installed':engines,'selected_engine':selected,'config_path':config,
-         'config_exists':bool(config and os.path.isfile(config)),'service_state':active,
+         'config_exists':bool(config and (os.path.isfile(config) or os.path.isfile('/host'+config))),'service_state':active,
          'apply_enabled':APPLY}
 @app.get('/discover')
 def discover(x_agent_token:str=Header(default='')):
