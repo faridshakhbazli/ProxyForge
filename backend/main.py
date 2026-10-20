@@ -5,11 +5,38 @@ from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 
 DB=os.getenv('DB_PATH','/data/proxyforge.db')
-# Explicit environment configuration overrides the generated local secret.
-# Never silently fall back to a shared default credential.
-TOKEN=os.getenv('ADMIN_TOKEN','').strip() or (open('/run/proxyforge/admin_token').read().strip() if os.path.isfile('/run/proxyforge/admin_token') else '')
-if len(TOKEN)<32:
- raise RuntimeError('ADMIN_TOKEN must contain at least 32 characters, or mount /run/proxyforge/admin_token')
+# Accept only strong credentials. An invalid .env value must not shadow a
+# valid bootstrap secret and cause a crash loop.
+def load_admin_token():
+ configured=os.getenv('ADMIN_TOKEN','').strip()
+ if len(configured)>=32:
+  return configured
+ for path in ('/run/proxyforge/admin_token','/data/admin_token'):
+  try:
+   with open(path,encoding='utf-8') as stream:
+    candidate=stream.read().strip()
+   if len(candidate)>=32:
+    return candidate
+  except FileNotFoundError:
+   pass
+ # Last-resort self-initialization on the persistent writable API data volume.
+ # Never generate a fresh credential on each container restart.
+ path='/data/admin_token'
+ os.makedirs(os.path.dirname(path),exist_ok=True)
+ try:
+  fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+ except FileExistsError:
+  with open(path,encoding='utf-8') as stream:
+   candidate=stream.read().strip()
+  if len(candidate)<32:
+   raise RuntimeError('Persistent admin token is invalid; check /data/admin_token')
+  return candidate
+ with os.fdopen(fd,'w',encoding='utf-8') as stream:
+  candidate=secrets.token_urlsafe(48)
+  stream.write(candidate)
+ return candidate
+
+TOKEN=load_admin_token()
 app=FastAPI(title='ProxyForge API',version='0.1.0')
 app.add_middleware(CORSMiddleware,allow_origins=[os.getenv('UI_ORIGIN','http://localhost:8080')],allow_methods=['*'],allow_headers=['*'])
 @contextmanager
