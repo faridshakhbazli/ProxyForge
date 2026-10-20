@@ -8,12 +8,12 @@ services:
         import os, pathlib, secrets
         root=pathlib.Path('/run/proxyforge')
         root.mkdir(parents=True,exist_ok=True)
-        for name in ('admin_token','agent_token','enrollment_token'):
+        for name in ('admin_token','enrollment_token'):
             path=root/name
             if not path.exists():
                 fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
                 with os.fdopen(fd,'w') as stream: stream.write(secrets.token_urlsafe(48))
-        print('ProxyForge credentials initialized in Docker volume. To view local Admin Token: docker compose exec api cat /run/proxyforge/admin_token',flush=True)
+        print('ProxyForge credentials initialized. Retrieve Admin Token: docker compose exec api cat /run/proxyforge/admin_token',flush=True)
     volumes:
       - proxyforge_secrets:/run/proxyforge
     restart: "no"
@@ -26,33 +26,20 @@ services:
         condition: service_completed_successfully
     environment:
       DB_PATH: /data/proxyforge.db
-      UI_ORIGIN: http://localhost:8080
+      UI_ORIGIN: ${UI_ORIGIN:-*}
       AGENT_ALLOWED_URLS: ${AGENT_ALLOWED_URLS:-}
     volumes:
       - proxyforge_data:/data
       - proxyforge_secrets:/run/proxyforge:ro
     ports:
-      - "127.0.0.1:8000:8000"
-    restart: unless-stopped
-  agent:
-    build:
-      context: .
-      args: {SERVICE: agent}
-    depends_on:
-      bootstrap:
-        condition: service_completed_successfully
-    environment:
-      PROXY_ENGINE: haproxy
-      ENABLE_APPLY: "false"
-    volumes:
-      - proxyforge_secrets:/run/proxyforge:ro
+      - "8000:8000"
     restart: unless-stopped
   ui:
     image: nginx:1.27-alpine
     volumes:
       - ./frontend:/usr/share/nginx/html:ro
     ports:
-      - "127.0.0.1:8080:80"
+      - "8080:80"
     restart: unless-stopped
 volumes:
   proxyforge_data:
