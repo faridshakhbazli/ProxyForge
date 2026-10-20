@@ -29,6 +29,7 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       UI_ORIGIN: ${UI_ORIGIN:-*}
       AGENT_ALLOWED_URLS: ${AGENT_ALLOWED_URLS:-}
+      ALLOW_HTTP_AGENTS: ${ALLOW_HTTP_AGENTS:-false}
     volumes:
       - proxyforge_data:/data
       - proxyforge_secrets:/run/proxyforge:ro

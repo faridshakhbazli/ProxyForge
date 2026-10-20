@@ -1,4 +1,4 @@
-import os, sqlite3, json, urllib.request, urllib.error, hmac, secrets, time
+import os, sqlite3, json, urllib.request, urllib.error, urllib.parse, hmac, secrets, time, ipaddress
 from contextlib import contextmanager
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel, Field
@@ -43,10 +43,25 @@ def health():return {'status':'ok'}
 def nodes(x_admin_token:str=Header(default='')):
  auth(x_admin_token)
  with conn() as c:return [dict(id=r['id'],name=r['name'],engine=r['engine'],url=r['url']) for r in c.execute('SELECT * FROM nodes')]
+def allowed_agent_url(url:str)->bool:
+ try:
+  parsed=urllib.parse.urlsplit(url)
+  if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('','/'):return False
+  host=parsed.hostname
+  if not host or not parsed.port or parsed.port<1 or parsed.port>65535:return False
+  if parsed.scheme=='https':return True
+  if parsed.scheme!='http':return False
+  if host in ('agent','127.0.0.1','localhost'):return True
+  if os.getenv('ALLOW_HTTP_AGENTS','false').lower()!='true':return False
+  # Only explicit private IPv4/IPv6 addresses are allowed in insecure dev mode.
+  ip=ipaddress.ip_address(host)
+  return ip.is_private and not ip.is_loopback and not ip.is_link_local
+ except (ValueError,AttributeError):
+  return False
 @app.post('/nodes')
 def add_node(n:Node,x_admin_token:str=Header(default='')):
  auth(x_admin_token)
- if not (n.url.startswith('http://agent:') or n.url.startswith('http://127.0.0.1:') or n.url.startswith('https://')):raise HTTPException(400,'Use HTTPS for remote agents')
+ if not allowed_agent_url(n.url):raise HTTPException(400,'Use HTTPS for remote agents; set ALLOW_HTTP_AGENTS=true for private IP HTTP agents')
  try:
   with conn() as c:c.execute('INSERT INTO nodes(name,engine,url,token) VALUES(?,?,?,?)',(n.name,n.engine,n.url.rstrip('/'),n.token))
  except sqlite3.IntegrityError:raise HTTPException(409,'Node already exists')
