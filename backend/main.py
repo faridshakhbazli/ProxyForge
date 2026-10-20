@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 
 DB=os.getenv('DB_PATH','/data/proxyforge.db')
-TOKEN=os.getenv('ADMIN_TOKEN','change-me')
+TOKEN=open('/run/proxyforge/admin_token').read().strip() if os.path.exists('/run/proxyforge/admin_token') else os.getenv('ADMIN_TOKEN','change-me')
 app=FastAPI(title='ProxyForge API',version='0.1.0')
 app.add_middleware(CORSMiddleware,allow_origins=[os.getenv('UI_ORIGIN','http://localhost:8080')],allow_methods=['*'],allow_headers=['*'])
 @contextmanager
@@ -145,7 +145,7 @@ def deploy(node_id:int,x_admin_token:str=Header(default='')):
  token:str=Field(min_length=32,max_length=512)
 @app.post('/agents/enroll')
 def enroll(n:Enrollment,x_enrollment_token:str=Header(default='')):
- secret=os.getenv('ENROLLMENT_TOKEN','')
+ secret=open('/run/proxyforge/enrollment_token').read().strip() if os.path.exists('/run/proxyforge/enrollment_token') else os.getenv('ENROLLMENT_TOKEN','')
  if len(secret)<32 or not hmac.compare_digest(x_enrollment_token,secret):raise HTTPException(401,'Invalid enrollment token')
  if not n.url.startswith('https://') or n.url.rstrip('/') not in set(os.getenv('AGENT_ALLOWED_URLS','').split(',')):
   raise HTTPException(400,'Agent URL must use HTTPS and be listed in AGENT_ALLOWED_URLS')
