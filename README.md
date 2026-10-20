@@ -7,7 +7,7 @@ An initial functional control-plane prototype supporting local and remote agent 
 ```bash
 cp .env.example .env
 # Edit .env and set two independent, strong random tokens.
-docker compose up -d --build
+docker compose -f docker-compose.yml up -d --build
 ```
 
 Open http://localhost:8080 and enter your ADMIN_TOKEN. Add the bundled HAProxy agent using URL `http://agent:8000` and your AGENT_TOKEN. Create an upstream, preview, and press Deploy to receive a dry-run response.
