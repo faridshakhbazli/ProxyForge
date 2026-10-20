@@ -26,6 +26,7 @@ services:
         condition: service_completed_successfully
     environment:
       DB_PATH: /data/proxyforge.db
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       UI_ORIGIN: ${UI_ORIGIN:-*}
       AGENT_ALLOWED_URLS: ${AGENT_ALLOWED_URLS:-}
     volumes:

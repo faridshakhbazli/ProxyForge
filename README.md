@@ -1,17 +1,29 @@
-# ProxyForge MVP — zero-config local start
+# ProxyForge MVP — controller and agent
 
-Run `docker compose up -d --build` and open http://127.0.0.1:8080.
+Start the Windows controller with `docker compose up -d --build`. Open `http://127.0.0.1:8080`.
 
-For the current MVP interface, retrieve your **randomly generated** local Admin Token with:
+## Central Admin Token configuration
 
-```bash
-docker compose exec api cat /run/proxyforge/admin_token
+Set `ADMIN_TOKEN` in a local, **untracked** `.env` file next to `docker-compose.yml`:
+
+```dotenv
+ADMIN_TOKEN=replace-with-a-unique-random-secret-of-at-least-32-characters
 ```
 
-Paste it into the GUI Connection form. No `.env` is needed for a local start. Three independent random credentials are generated once in a persistent Docker volume. Never expose the Admin Token publicly. To register the bundled demo agent use URL `http://agent:8000` and retrieve the Agent Token with `docker compose exec agent cat /run/proxyforge/agent_token`.
+Generate a secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+Apply changes with `docker compose up -d --force-recreate api`. The API uses the environment variable **first**. If it is empty or unset, the controller uses its auto-generated token in the persistent `proxyforge_secrets` volume. It refuses to start without a token of at least 32 characters; there is no `change-me` default.
 
-The `bootstrap` container only creates secrets that do not already exist. Do not delete the `proxyforge_secrets` volume casually, as it will rotate the local credentials.
+When no environment override is configured, retrieve the generated token with `docker compose exec -T api cat /run/proxyforge/admin_token`. **When ADMIN_TOKEN is configured, the file is not the active token.** Use the configured environment value in the GUI instead.
 
-Remote agent enrollment requires HTTPS endpoints, a trusted certificate, an exact `AGENT_ALLOWED_URLS` allowlist, and separate agent credentials. No remote endpoints are allowed by default. To configure remote enrollment, follow the enrollment section of the prior version documentation or configure these values deliberately. The local default does **not** automatically connect to 192.168.44.181.
+Check authorization (PowerShell):
 
-**Limitations:** This is still a development MVP. Deployment remains dry-run / intentionally blocked; there is no production login, RBAC or full config import. Do not expose the demo publicly or use it to manage production proxies.
+```powershell
+$token = (Get-Content .env | Where-Object { $_ -match '^ADMIN_TOKEN=' } | Select-Object -First 1) -replace '^ADMIN_TOKEN=', ''
+Invoke-RestMethod -Uri 'http://127.0.0.1:8000/nodes' -Headers @{ 'X-Admin-Token' = $token }
+```
+
+Keep `.env` private; do not commit tokens or post them in chats. A previously exposed token must be rotated. Changing ADMIN_TOKEN invalidates the previous token after the API container is recreated.
+
+## Limitations
+
+The controller and remote agent are development MVP components. Remote agent enrollment requires HTTPS, trusted certificates, explicit allowlists, and separate agent credentials. Agent apply is dry-run / intentionally blocked; there is no production login, RBAC, or full config import. Do not expose the MVP publicly.
