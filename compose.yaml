@@ -7,6 +7,8 @@ services:
       DB_PATH: /data/proxyforge.db
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN}
       UI_ORIGIN: http://localhost:8080
+      ENROLLMENT_TOKEN: ${ENROLLMENT_TOKEN:?set ENROLLMENT_TOKEN}
+      AGENT_ALLOWED_URLS: ${AGENT_ALLOWED_URLS:-}
     volumes: [proxyforge_data:/data]
     ports: ["127.0.0.1:8000:8000"]
     restart: unless-stopped
