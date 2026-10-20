@@ -10,9 +10,15 @@ services:
         root.mkdir(parents=True,exist_ok=True)
         for name in ('admin_token','enrollment_token'):
             path=root/name
-            if not path.exists():
-                fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-                with os.fdopen(fd,'w') as stream: stream.write(secrets.token_urlsafe(48))
+            existing=path.read_text().strip() if path.is_file() else ''
+            if len(existing)<32:
+                # Repair missing, empty or truncated credentials without deleting volumes.
+                temp=root/(name+'.tmp')
+                fd=os.open(temp,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
+                with os.fdopen(fd,'w') as stream:
+                    stream.write(secrets.token_urlsafe(48))
+                os.replace(temp,path)
+            os.chmod(path,0o600)
         print('ProxyForge credentials initialized. Retrieve Admin Token: docker compose exec api cat /run/proxyforge/admin_token',flush=True)
     volumes:
       - proxyforge_secrets:/run/proxyforge
